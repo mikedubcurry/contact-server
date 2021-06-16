@@ -22,7 +22,6 @@ const transport = nodemailer.createTransport({
 
 const app = express();
 
-
 app.use(
 	morgan('[:date[clf]] :method :url :status', {
 		stream: createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' }),
