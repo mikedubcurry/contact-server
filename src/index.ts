@@ -96,9 +96,3 @@ interface nodemailerResponse {
 	rejected: string[];
 	response: string;
 }
-
-interface CustomResponse extends ServerResponse {
-	body: {
-		message: string;
-	};
-}
