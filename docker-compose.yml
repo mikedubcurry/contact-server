@@ -1,0 +1,21 @@
+version: '3.7'
+
+services:
+  email-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    volumes:
+      - ./src:/home/app/src
+      - ./logs:/home/app/dist
+    container_name: email-server
+    expose:
+      - '3000'
+    ports:
+      - '3000:3000'
+    environment:
+      EMAIL_ACCOUNT: secret
+      EMAIL_PASS: secret
+      EMAIL_DESTINATION: secret
+    command: npm run start
