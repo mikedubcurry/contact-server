@@ -1,6 +1,6 @@
 import express from 'express';
 import morgan from 'morgan';
-import { createWriteStream } from 'fs';
+import { createWriteStream, writeFileSync } from 'fs';
 import { ServerResponse } from 'http';
 import path from 'path';
 import nodemailer from 'nodemailer';
