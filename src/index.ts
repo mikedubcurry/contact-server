@@ -1,16 +1,13 @@
 import express from 'express';
 import morgan from 'morgan';
-import { createWriteStream, writeFileSync } from 'fs';
-import { ServerResponse } from 'http';
+import { createWriteStream } from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-let cache: {
-	[email: string]: number;
-} = {};
+let cache: Cache = {};
 
 const transport = nodemailer.createTransport({
 	service: 'gmail',
@@ -49,7 +46,7 @@ app.post('/sendEmail', async (req, res) => {
 	if (!name || !email || !message) {
 		return res.status(400).json({ status: 'error', message: 'must send name, email and message' });
 	}
-	if (!allowedToEmail(email)) {
+	if (!allowedToEmail(email, cache)) {
 		return res.status(429).json({
 			status: 'error',
 			message: `user ${name}-${email} has already sent a message. try again in an hour`,
@@ -82,7 +79,7 @@ app.listen(3000, () => {
 	console.log('listening on port 3000');
 });
 
-function allowedToEmail(email: string): boolean {
+export function allowedToEmail(email: string, cache: Cache): boolean {
 	if (!cache[email]) return true;
 	else if (new Date().getTime() - cache[email] > 3.6e6) {
 		delete cache[email];
@@ -95,3 +92,7 @@ interface nodemailerResponse {
 	rejected: string[];
 	response: string;
 }
+
+export type Cache = {
+	[email: string]: number;
+};
