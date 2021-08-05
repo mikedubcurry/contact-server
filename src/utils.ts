@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import { writeFileSync, readFileSync, appendFileSync } from 'fs';
+import path from 'path';
 
 export function allowedToEmail(email: string, cache: MyCache, blockList: BlockList = []): boolean {
 	if (blockList.includes(email)) {
@@ -23,6 +25,31 @@ export function rejectInBlockList(req: Request, res: Response, next: NextFunctio
 			message: `user with IP addr: ${req.ip} is unable to use this feature`,
 		});
 	} else {
-		next();   
+		next();
+	}
+}
+
+export function loadBlockList() {
+	let blocklist: BlockList;
+	try {
+		blocklist = readFileSync(path.join(__dirname, './blocklist.txt'), 'utf-8')
+			.split('\n')
+			.filter((ip) => ip);
+		// return blocklist;
+	} catch (err) {
+		writeFileSync(path.join(__dirname, './blocklist.txt'), '', { encoding: 'utf-8' });
+		blocklist = readFileSync(path.join(__dirname, './blocklist.txt'), 'utf-8')
+			.split('\n')
+			.filter((ip) => ip);
+	}
+	return blocklist;
+}
+
+export function addToBlockList(ip: BlockedIP) {
+	try {
+		appendFileSync(path.join(__dirname, './blocklist.txt'), '\n' + ip);
+		return true;
+	} catch (err) {
+		return false;
 	}
 }
