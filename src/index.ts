@@ -24,7 +24,7 @@ const transport = nodemailer.createTransport({
 const app = express();
 
 app.use(
-	morgan('[:date[clf]] :method :url :status', {
+	morgan('[:date[clf]] :remote-addr :method :url :status', {
 		stream: createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' }),
 		skip: function (req, res) {
 			return res.statusCode < 400;
