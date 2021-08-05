@@ -5,11 +5,11 @@ import path from 'path';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-import { allowedToEmail, rejectInBlockList } from './utils';
+import { addToBlockList, allowedToEmail, loadBlockList, rejectInBlockList } from './utils';
 
 dotenv.config();
 
-const blockList: BlockList = readFileSync(path.join(__dirname, './blocklist.txt'), 'utf-8').split('\n');
+let blockList: BlockList = loadBlockList();
 
 let cache: MyCache = {};
 
@@ -89,11 +89,14 @@ app.post(
 	}
 );
 
-app.post('/blockEmail', (req, res) => {
+app.post('/blockUser', (req, res) => {
 	const { ip } = req.body;
 	if (!ip) {
-		return res.status(400).json({ status: 'error', message: 'must supply email to be added to blockList' });
+		return res.status(400).json({ status: 'error', message: 'must supply ip to be added to blockList' });
 	}
+	addToBlockList(ip);
+	blockList = loadBlockList();
+	res.json({ blockList });
 });
 
 app.listen(3000, () => {
