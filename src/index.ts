@@ -1,13 +1,17 @@
 import express from 'express';
 import morgan from 'morgan';
-import { createWriteStream } from 'fs';
+import { createWriteStream, readFileSync } from 'fs';
 import path from 'path';
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
+import { allowedToEmail, rejectInBlockList } from './utils';
+
 dotenv.config();
 
-let cache: Cache = {};
+const blockList: BlockList = readFileSync(path.join(__dirname, './blocklist.txt'), 'utf-8').split('\n');
+
+let cache: MyCache = {};
 
 const transport = nodemailer.createTransport({
 	service: 'gmail',
@@ -41,58 +45,57 @@ app.get('/clearCache', (req, res) => {
 	res.json({ status: 'success', message: 'cache cleared' });
 });
 
-app.post('/sendEmail', async (req, res) => {
-	const { name, email, message }: { name: string; email: string; message: string } = req.body;
-	if (!name || !email || !message) {
-		return res.status(400).json({ status: 'error', message: 'must send name, email and message' });
-	}
-	if (!allowedToEmail(email, cache)) {
-		return res.status(429).json({
-			status: 'error',
-			message: `user ${name}-${email} has already sent a message. try again in an hour`,
-		});
-	}
-
-	try {
-		const messageSent = (await transport.sendMail({
-			to: process.env.EMAIL_DESTINATION,
-			from: process.env.EMAIL_ACCOUNT,
-			subject: `Portfolio message from ${name}-${email}`,
-			html: message,
-		})) as unknown as nodemailerResponse;
-
-		if (messageSent.rejected.length) {
-			return res.status(500).json({ status: 'error', message: 'message not sent' });
+app.post(
+	'/sendEmail',
+	(req, res, next) => {
+		rejectInBlockList(req, res, next, blockList);
+	},
+	async (req, res) => {
+		const { name, email, message }: { name: string; email: string; message: string } = req.body;
+		if (!name || !email || !message) {
+			return res.status(400).json({ status: 'error', message: 'must send name, email and message' });
 		}
-		if (messageSent.response.includes(' OK ')) {
-			/* this is probably good */
-
-			cache[email] = new Date().getTime();
-			return res.status(200).json({ status: 'success', message: 'message sent' });
+		if (!allowedToEmail(email, cache, blockList)) {
+			return res.status(429).json({
+				status: 'error',
+				message: `user ${name}-${email} has already sent a message. try again in an hour`,
+			});
 		}
-	} catch (e) {
-		return res.status(500).json({ status: 'error', message: 'error in POST /sendMail' });
+
+		if (message.length > 240) {
+			return res.status(400).json({ status: 'error', message: 'message exceeds allowed length' });
+		}
+
+		try {
+			const messageSent = (await transport.sendMail({
+				to: process.env.EMAIL_DESTINATION,
+				from: process.env.EMAIL_ACCOUNT,
+				subject: `Portfolio message from ${name}-${email}`,
+				html: message,
+			})) as unknown as nodemailerResponse;
+
+			if (messageSent.rejected.length) {
+				return res.status(500).json({ status: 'error', message: 'message not sent' });
+			}
+			if (messageSent.response.includes(' OK ')) {
+				/* this is probably good */
+
+				cache[email] = new Date().getTime();
+				return res.status(200).json({ status: 'success', message: 'message sent' });
+			}
+		} catch (e) {
+			return res.status(500).json({ status: 'error', message: 'error in POST /sendMail' });
+		}
+	}
+);
+
+app.post('/blockEmail', (req, res) => {
+	const { ip } = req.body;
+	if (!ip) {
+		return res.status(400).json({ status: 'error', message: 'must supply email to be added to blockList' });
 	}
 });
 
 app.listen(3000, () => {
 	console.log('listening on port 3000');
 });
-
-export function allowedToEmail(email: string, cache: Cache): boolean {
-	if (!cache[email]) return true;
-	else if (new Date().getTime() - cache[email] > 3.6e6) {
-		delete cache[email];
-		return true;
-	} else return false;
-}
-
-interface nodemailerResponse {
-	accepted: string[];
-	rejected: string[];
-	response: string;
-}
-
-export type Cache = {
-	[email: string]: number;
-};
