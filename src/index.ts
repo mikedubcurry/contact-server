@@ -26,8 +26,9 @@ const app = express();
 app.use(
 	morgan('[:date[clf]] :remote-addr :method :url :status', {
 		stream: createWriteStream(path.join(__dirname, 'access.log'), { flags: 'a' }),
+		// log all requests except 404s
 		skip: function (req, res) {
-			return res.statusCode < 400;
+			return res.statusCode === 404;
 		},
 	})
 );
