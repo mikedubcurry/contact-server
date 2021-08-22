@@ -71,7 +71,7 @@ app.post(
 				to: process.env.EMAIL_DESTINATION,
 				from: process.env.EMAIL_ACCOUNT,
 				subject: `Portfolio message from ${name}-${email}`,
-				html: message,
+				html: new Date() + message,
 			})) as unknown as nodemailerResponse;
 
 			if (messageSent.rejected.length) {
